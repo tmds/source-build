@@ -138,29 +138,6 @@ if [ ! -e "$__DOTNET_PATH" ]; then
         __DOTNET_PKG=dotnet-sdk-${__DOTNET_TOOLS_VERSION}-$__PKG_RID-$__PKG_ARCH
         __DOTNET3_PKG=dotnet-sdk-${__DOTNET3_TOOLS_VERSION}-$__PKG_RID-$__PKG_ARCH
     fi
-    mkdir -p "$__DOTNET_PATH"
-
-    echo "Installing dotnet cli..."
-    __DOTNET_LOCATION="https://dotnetcli.azureedge.net/dotnet/Sdk/${__DOTNET_TOOLS_VERSION}/${__DOTNET_PKG}.tar.gz"
-
-    install_dotnet_cli() {
-        if [[ -z "${DotNetBootstrapCliTarPath-}" ]]; then
-            echo "Installing '${__DOTNET_LOCATION}' to '$__DOTNET_PATH/dotnet.tar'"
-            rm -rf -- "$__DOTNET_PATH/*"
-            # curl has HTTPS CA trust-issues less often than wget, so lets try that first.
-            if command -v curl > /dev/null; then
-                curl --retry 10 -sSL --create-dirs -o $__DOTNET_PATH/dotnet.tar ${__DOTNET_LOCATION}
-            else
-                wget -q -O $__DOTNET_PATH/dotnet.tar ${__DOTNET_LOCATION}
-            fi
-        else
-            echo "Copying '$DotNetBootstrapCliTarPath' to '$__DOTNET_PATH/dotnet.tar'"
-            cp $DotNetBootstrapCliTarPath $__DOTNET_PATH/dotnet.tar
-        fi
-        cd "$__DOTNET_PATH"
-        tar -xf "$__DOTNET_PATH/dotnet.tar"
-    }
-    execute_with_retry install_dotnet_cli >> "$__init_tools_log" 2>&1
 
     mkdir -p "$__DOTNET3_PATH"
 
@@ -185,6 +162,13 @@ if [ ! -e "$__DOTNET_PATH" ]; then
         tar -xf "$__DOTNET3_PATH/dotnet.tar"
     }
     execute_with_retry install_dotnet3_cli >> "$__init_tools_log" 2>&1
+
+    echo "Using dotnet 3.0 cli as dotnet cli..."
+    # Use dotnet3 sdk
+    ln -s "$__DOTNET3_PATH" "$__DOTNET_PATH"
+    # Roll forward 2.x to 3.x
+    __DOTNET_RUNTIME_VERSION=$(basename $(ls -d $__DOTNET_PATH/shared/Microsoft.NETCore.App/3.*))
+    ln -s "$__DOTNET_PATH/shared/Microsoft.NETCore.App/$__DOTNET_RUNTIME_VERSION" "$__DOTNET_PATH/shared/Microsoft.NETCore.App/2.2.0"
 
     cd "$__scriptpath"
 fi
@@ -214,6 +198,9 @@ if [ -n "${DotNetBootstrapCliTarPath-}" ]; then
 fi
 
 echo "Initializing BuildTools..."
+echo "Updating crossgen location"
+# note: this codegen is broken ('Jit Compiler has wrong version identifier'), but so far that doesn't stop the build.
+sed -i 's@__crossgen=$__packagesDir/.*/crossgen@__crossgen=$__packagesDir/runtime.$__packageRid.microsoft.netcore.runtime.coreclr/3.0.0*/tools/crossgen@g' "$__PACKAGES_DIR/microsoft.dotnet.buildtools/$__BUILD_TOOLS_PACKAGE_VERSION/lib/crossgen.sh"
 echo "Running: $__BUILD_TOOLS_PATH/init-tools.sh $__scriptpath $__DOTNET_CMD $__TOOLRUNTIME_DIR $__PACKAGES_DIR" >> "$__init_tools_log"
 
 # Executables restored with .NET Core 2.0 do not have executable permission flags. https://github.com/NuGet/Home/issues/4424
@@ -238,6 +225,16 @@ BUILDTOOLS_CROSSGEN_FEED=https://api.nuget.org/v3/index.json "$__scriptpath/Tool
 
 # CoreCLR expects this and has no way to pass in the dotnetcli directory
 ln -s $__DOTNET_PATH $__TOOLRUNTIME_DIR/.dotnet
+
+echo "Adding libgit2sharp arm64 support"
+# Take debian-arm64 (OpenSSL 1.1 compatible) .so file from NuGet.org package and put in in the runtime folder (where no-one will remove it).
+__LIBGIT2SHARP_BINARIES_SOURCE_BUILD_SO_FILENAME=libgit2-572e4d8.so
+__LIBGIT2SHARP_BINARIES_NUGET_VERSION=2.0.289
+__LIBGIT2SHARP_BINARIES_URL=https://www.nuget.org/api/v2/package/LibGit2Sharp.NativeBinaries/$__LIBGIT2SHARP_BINARIES_NUGET_VERSION
+curl --retry 10 -sSL --create-dirs -o $__PACKAGES_DIR/libgit2sharp.nativebinaries.$__LIBGIT2SHARP_BINARIES_NUGET_VERSION.zip ${__LIBGIT2SHARP_BINARIES_URL}
+mkdir -p $__PACKAGES_DIR/libgit2sharp.nativebinaries/$__LIBGIT2SHARP_BINARIES_NUGET_VERSION
+unzip $__PACKAGES_DIR/libgit2sharp.nativebinaries.$__LIBGIT2SHARP_BINARIES_NUGET_VERSION.zip -d $__PACKAGES_DIR/libgit2sharp.nativebinaries/$__LIBGIT2SHARP_BINARIES_NUGET_VERSION
+cp $__PACKAGES_DIR/libgit2sharp.nativebinaries/$__LIBGIT2SHARP_BINARIES_NUGET_VERSION/runtimes/debian-arm64/native/*.so $__DOTNET_PATH/shared/Microsoft.NETCore.App/$__DOTNET_RUNTIME_VERSION/$__LIBGIT2SHARP_BINARIES_SOURCE_BUILD_SO_FILENAME
 
 mkdir -p "$(dirname "$__BUILD_TOOLS_SEMAPHORE")" && touch "$__BUILD_TOOLS_SEMAPHORE"
 mkdir -p "$(dirname "$__BUILD_TOOLS_ARCADE_SEMAPHORE")" && touch "$__BUILD_TOOLS_ARCADE_SEMAPHORE"
