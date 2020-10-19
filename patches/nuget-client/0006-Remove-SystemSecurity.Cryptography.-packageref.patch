@@ -1,0 +1,114 @@
+From 5fb3edb10ab9633ac18138a438670abfdd1b6074 Mon Sep 17 00:00:00 2001
+From: Tom Deseyn <tom.deseyn@gmail.com>
+Date: Mon, 19 Oct 2020 13:21:50 +0200
+Subject: [PATCH] nuget: Remove SystemSecurity.Cryptography.* packagereferences
+
+---
+ build/common.project.props                           | 12 ++++++------
+ build/packages.targets                               |  5 -----
+ .../NuGet.Configuration/NuGet.Configuration.csproj   |  4 ----
+ .../NuGet.Packaging/NuGet.Packaging.csproj           |  4 ++--
+ .../NuGet.Configuration.Test.csproj                  |  4 ----
+ 5 files changed, 8 insertions(+), 21 deletions(-)
+
+diff --git a/build/common.project.props b/build/common.project.props
+index 03c93ae65..ff9ad7272 100644
+--- a/build/common.project.props
++++ b/build/common.project.props
+@@ -13,17 +13,17 @@
+     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+     <NETFXTargetFrameworkVersion>v4.7.2</NETFXTargetFrameworkVersion>
+     <NETFXTargetFramework>net472</NETFXTargetFramework>
+-    <NETCoreTargetFramework>netcoreapp2.1</NETCoreTargetFramework>
+-    <NETCoreTargetFrameworksForSigning>$(NETCoreTargetFramework);netcoreapp5.0</NETCoreTargetFrameworksForSigning>
++    <NETCoreTargetFramework>net5.0</NETCoreTargetFramework>
++    <NETCoreTargetFrameworksForSigning>$(NETCoreTargetFramework);net5.0</NETCoreTargetFrameworksForSigning>
+     <IsBuildOnlyXPLATProjects>$(DotNetBuildFromSource)</IsBuildOnlyXPLATProjects>
+-    <NETCoreTestTargetFramework>netcoreapp5.0</NETCoreTestTargetFramework>
+-    <NetStandardVersion>netstandard2.0</NetStandardVersion>
++    <NETCoreTestTargetFramework>net5.0</NETCoreTestTargetFramework>
++    <NetStandardVersion>net5.0</NetStandardVersion>
+     <TargetFrameworksExe>$(NETFXTargetFramework);$(NETCoreTargetFramework)</TargetFrameworksExe>
+     <TargetFrameworksExe Condition="'$(IsBuildOnlyXPLATProjects)' == 'true'">$(NETCoreTargetFramework)</TargetFrameworksExe>
+-    <TargetFrameworksExeForSigning>$(TargetFrameworksExe);netcoreapp5.0</TargetFrameworksExeForSigning>
++    <TargetFrameworksExeForSigning>$(TargetFrameworksExe);net5.0</TargetFrameworksExeForSigning>
+     <TargetFrameworksLibrary>$(NETFXTargetFramework);$(NetStandardVersion)</TargetFrameworksLibrary>
+     <TargetFrameworksLibrary Condition="'$(IsBuildOnlyXPLATProjects)' == 'true'">$(NetStandardVersion)</TargetFrameworksLibrary>
+-    <TargetFrameworksLibraryForSigning>$(TargetFrameworksLibrary);netcoreapp5.0</TargetFrameworksLibraryForSigning>
++    <TargetFrameworksLibraryForSigning>$(TargetFrameworksLibrary);net5.0</TargetFrameworksLibraryForSigning>
+     <RepositoryRootDirectory>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'README.md'))\</RepositoryRootDirectory>
+     <BuildCommonDirectory>$(RepositoryRootDirectory)build\</BuildCommonDirectory>
+     <SolutionFile>$(RepositoryRootDirectory)$(RepositoryName).sln</SolutionFile>
+diff --git a/build/packages.targets b/build/packages.targets
+index 873850ccb..8a165d7d0 100644
+--- a/build/packages.targets
++++ b/build/packages.targets
+@@ -7,8 +7,6 @@
+         <VSFrameworkVersion>16.6.30107.105</VSFrameworkVersion>
+         <VSServicesVersion>16.153.0</VSServicesVersion>
+         <VSThreadingVersion>16.7.56</VSThreadingVersion>
+-        <!-- TODO - remove this when temporary patching is no longer necessary. See https://github.com/nuget/home/issues/8952 -->
+-        <PatchedSystemPackagesVersion>5.0.0-preview.3.20214.6</PatchedSystemPackagesVersion>
+     </PropertyGroup>
+ 
+     <!-- Test and package versions -->
+@@ -64,9 +62,6 @@
+         <PackageReference Update="Newtonsoft.Json" Version="$(NewtonsoftJsonPackageVersion)" />
+         <PackageReference Update="System.Collections.Immutable" Version="1.7.1" />
+         <PackageReference Update="System.Diagnostics.Debug" Version="$(SystemPackagesVersion)" />
+-        <PackageReference Update="System.Security.Cryptography.Pkcs" Version="$(PatchedSystemPackagesVersion)" />
+-        <PackageReference Update="System.Security.Cryptography.Cng" Version="$(PatchedSystemPackagesVersion)" />
+-        <PackageReference Update="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
+         <PackageReference Update="System.Threading.Tasks.Dataflow" Version="4.9.0" />
+         <PackageReference Update="VSLangProj" Version="7.0.3300" />
+         <PackageReference Update="VSLangProj110" Version="11.0.61030" />
+diff --git a/src/NuGet.Core/NuGet.Configuration/NuGet.Configuration.csproj b/src/NuGet.Core/NuGet.Configuration/NuGet.Configuration.csproj
+index bbc5ba480..3c850ef0d 100644
+--- a/src/NuGet.Core/NuGet.Configuration/NuGet.Configuration.csproj
++++ b/src/NuGet.Core/NuGet.Configuration/NuGet.Configuration.csproj
+@@ -29,10 +29,6 @@
+     <Reference Include="System.Xml.Linq" />
+   </ItemGroup>
+ 
+-  <ItemGroup Condition=" '$(TargetFramework)' == '$(NetStandardVersion)' ">
+-    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+-  </ItemGroup>
+-
+   <ItemGroup>
+     <Compile Update="Resources.Designer.cs">
+       <DesignTime>True</DesignTime>
+diff --git a/src/NuGet.Core/NuGet.Packaging/NuGet.Packaging.csproj b/src/NuGet.Core/NuGet.Packaging/NuGet.Packaging.csproj
+index 5e75b6d84..645c47b51 100644
+--- a/src/NuGet.Core/NuGet.Packaging/NuGet.Packaging.csproj
++++ b/src/NuGet.Core/NuGet.Packaging/NuGet.Packaging.csproj
+@@ -44,10 +44,10 @@
+     <PackageReference Include="Newtonsoft.Json" />
+   </ItemGroup>
+ 
+-  <ItemGroup Condition=" '$(IsCore)' == 'true' ">
++  <!-- <ItemGroup Condition=" '$(IsCore)' == 'true' ">
+     <PackageReference Include="System.Security.Cryptography.Pkcs" />
+     <PackageReference Include="System.Security.Cryptography.Cng" />
+-  </ItemGroup>
++  </ItemGroup> -->
+ 
+   <ItemGroup>
+     <Compile Update="Signing\DerEncoding\SR.Designer.cs">
+diff --git a/test/NuGet.Core.Tests/NuGet.Configuration.Test/NuGet.Configuration.Test.csproj b/test/NuGet.Core.Tests/NuGet.Configuration.Test/NuGet.Configuration.Test.csproj
+index 85884a0be..7d6f6b9ec 100644
+--- a/test/NuGet.Core.Tests/NuGet.Configuration.Test/NuGet.Configuration.Test.csproj
++++ b/test/NuGet.Core.Tests/NuGet.Configuration.Test/NuGet.Configuration.Test.csproj
+@@ -14,10 +14,6 @@
+     <ProjectReference Include="$(TestUtilitiesDirectory)Test.Utility\Test.Utility.csproj" />
+   </ItemGroup>
+ 
+-  <ItemGroup Condition=" '$(IsCore)' == 'true' ">
+-    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+-  </ItemGroup>
+-
+   <ItemGroup Condition=" '$(TargetFramework)' == '$(NETFXTargetFramework)' ">
+     <Reference Include="System.Net" />
+     <Reference Include="System.Net.Http" />
+-- 
+2.26.2
+
